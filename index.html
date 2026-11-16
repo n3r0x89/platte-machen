@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#1C1A17">
 <title>Platte Machen – Prototyp</title>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root { --bg:#1C1A17; --card:#2A2622; --text:#F2EDE4; --muted:#B5AFA4; --gold:#E8A33D; --green:#6FBF73; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -49,6 +50,18 @@
   .exit { width:34px; height:34px; border:none; border-radius:50%; background:rgba(28,26,23,.6); color:var(--text); display:flex; align-items:center; justify-content:center; padding:0; }
   #becherImg { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom) + 82px); width:84px; height:84px; border-radius:50%; object-fit:cover; border:2px solid rgba(232,163,61,.9); z-index:4; transition:opacity .3s; }
   #becherImg.packed { opacity:.25; }
+  #map { position:absolute; inset:0; z-index:3; display:none; background:#1C1A17; }
+  #map .leaflet-tile-pane { filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6); }
+  .leaflet-control-attribution { font-size:9px !important; background:rgba(28,26,23,.7) !important; color:#B5AFA4 !important; }
+  .leaflet-control-attribution a { color:#E8A33D !important; }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:#1C1A17; color:#F2EDE4; }
+  .leaflet-popup-content { margin:10px 12px; font:600 13px Inter, sans-serif; line-height:1.4; }
+  .me { width:46px; height:46px; border-radius:50%; border:3px solid #E8A33D; overflow:hidden; background:#DAD8D3; box-shadow:0 0 0 6px rgba(232,163,61,.25); }
+  .me img { width:46px; height:90px; object-fit:cover; object-position:top; }
+  #poiCard { position:absolute; left:10px; right:10px; bottom:calc(env(safe-area-inset-bottom) + 80px); z-index:6; background:rgba(28,26,23,.88); border-radius:14px; padding:10px 14px; font-size:13px; line-height:1.4; display:none; }
+  #poiCard b { font-size:14px; }
+  .legend { display:flex; flex-wrap:wrap; gap:6px 10px; margin-top:6px; font-size:11px; color:#D9D3C8; }
+  .legend i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:4px; vertical-align:middle; }
   .coinpop { position:absolute; z-index:8; font-family:Anton, sans-serif; font-size:30px; color:#F5C46E; text-shadow:0 2px 6px rgba(0,0,0,.6); pointer-events:none; animation:pop 1.4s ease-out forwards; }
   .coinpop.lost { color:#E06A5A; font-size:20px; }
   @keyframes pop { 0%{transform:translateY(0);opacity:1} 100%{transform:translateY(-90px);opacity:0} }
@@ -104,7 +117,7 @@
     <button class="level" data-level="1"><b>1 · Frech</b><span>„Becher leer? Vielleicht mal lächeln, Kollege.“</span></button>
     <button class="level sel" data-level="2"><b>2 · Derb</b><span>„Dein Becher ist leerer als dein Kopf.“</span></button>
     <button class="level" data-level="3"><b>3 · Komplett eskaliert (18+)</b><span>„Selbst die Tauben scheißen lieber auf dich …“</span></button>
-    <p class="note">Prototyp: Die Kamera erkennt Passanten direkt auf deinem Handy. Es wird nichts aufgenommen, gespeichert oder hochgeladen. Beim Suchen bitte auf den Verkehr achten!</p>
+    <p class="note">Prototyp: Die Kamera erkennt Passanten direkt auf deinem Handy. Es wird nichts aufgenommen, gespeichert oder hochgeladen. Beim Suchen bitte auf den Verkehr achten! Für die Karte wird dein ungefährer Standort an OpenStreetMap-Dienste geschickt, um Orte in deiner Nähe zu laden.</p>
     <button class="btn" id="startBtn">Los geht’s</button>
     <p class="note" id="startErr" style="color:#E06A5A"></p>
   </div>
@@ -114,6 +127,8 @@
   <video id="video" playsinline muted autoplay></video>
   <canvas id="overlay"></canvas>
   <div id="finds"></div>
+  <div id="map"></div>
+  <div id="poiCard"></div>
 
   <div class="hud">
     <div class="row">
@@ -121,6 +136,7 @@
       <div class="seg" role="tablist">
         <button id="modeBetteln" class="on" role="tab">Betteln</button>
         <button id="modeSuchen" role="tab">Suchen</button>
+        <button id="modeKarte" role="tab">Karte</button>
       </div>
       <button class="exit" id="exitBtn" aria-label="Spiel beenden"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
@@ -166,12 +182,14 @@
   <div id="kioskList"></div>
   <h3>Einstellungen</h3>
   <label style="font-size:14px;display:flex;align-items:center;gap:8px"><input type="checkbox" id="debugBox" checked> Erkennungs-Rahmen zeigen</label>
+  <label style="font-size:14px;display:flex;align-items:center;gap:8px"><input type="checkbox" id="anywhereBox"> Pfand überall abgeben (Test-Modus)</label>
   <div class="stats" id="stats"></div>
   <button class="btn dark" id="resetBtn" style="height:44px;font-size:14px">Spielstand zurücksetzen</button>
 </div></div>
 
 <div id="toast"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 <script>
@@ -403,6 +421,11 @@ const LINES = {
     ['Niete. Kopf hoch, nächstes Mal!'],
     ['Niete. Passt zu dir.'],
     ['Niete. Du bist halt selbst eine.']
+  ],
+  nopfand: [
+    ['Pfand gibt’s nur am Automaten im Supermarkt. Ab dahin!'],
+    ['Willst du den Pfand dem Baum geben? Ab zum Supermarkt!'],
+    ['Pfandautomat steht im Supermarkt, du Spatzenhirn. Nicht in deinem Arsch.']
   ]
 };
 
@@ -461,6 +484,7 @@ $('startBtn').onclick = async () => {
   } catch (e) { $('startErr').textContent = 'Kamera nicht verfügbar. Bitte Kamera-Zugriff erlauben.'; return; }
   $('start').classList.remove('active'); $('game').classList.add('active');
   running = true; tracks = []; lastCoinTime = Date.now();
+  startGeo();
   setMode(mode, true); say('start', true);
   if (!model) {
     $('status').textContent = 'KI wird geladen … (beim ersten Mal ca. 10 Sek.)';
@@ -474,6 +498,7 @@ $('exitBtn').onclick = () => {
   running = false;
   if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
   window.removeEventListener('devicemotion', onMotion);
+  if (geoWatch !== null) { navigator.geolocation.clearWatch(geoWatch); geoWatch = null; }
   if (S.cup > 0) { S.money = r2(S.money + S.cup); S.cup = 0; }
   clearFinds(); save();
   document.querySelector('.kalle-bar').classList.remove('show');
@@ -486,14 +511,19 @@ function setMode(m, silent) {
   mode = m;
   $('modeBetteln').classList.toggle('on', m === 'betteln');
   $('modeSuchen').classList.toggle('on', m === 'suchen');
+  $('modeKarte').classList.toggle('on', m === 'karte');
   $('becherImg').style.display = m === 'betteln' ? '' : 'none';
   $('emptyBtn').style.display = m === 'betteln' ? '' : 'none';
+  $('map').style.display = m === 'karte' ? 'block' : 'none';
+  $('poiCard').style.display = m === 'karte' ? 'block' : 'none';
+  if (m === 'karte') { clearFinds(); clearOverlay(); initMap(); renderPoiCard(); setStatus(); updateUI(); return; }
   if (m === 'suchen') { packed = false; $('becherImg').classList.remove('packed'); tracks = []; clearOverlay(); lastSpawnCheck = Date.now(); if (!silent) say('searchstart', true); }
   else { clearFinds(); if (!silent) say('start', true); }
   setStatus(); updateUI();
 }
 $('modeBetteln').onclick = () => { if (mode !== 'betteln') setMode('betteln'); };
 $('modeSuchen').onclick = () => { if (mode !== 'suchen') setMode('suchen'); };
+$('modeKarte').onclick = () => { if (mode !== 'karte') setMode('karte'); };
 let statusTimer = null, lastStatus = '';
 function showStatus(t) {
   if (t === lastStatus) return; lastStatus = t;
@@ -502,8 +532,10 @@ function showStatus(t) {
 }
 function setStatus() {
   if (!model) return;
-  if (mode === 'betteln') showStatus(packed ? 'Becher eingepackt – du bewegst dich' : 'Bereit – Handy still halten');
-  else showStatus(moving() ? 'Unterwegs – Augen offen!' : 'Beweg dich, sonst findest du nix');
+  if (mode === 'karte') { showStatus(geo ? (pois.length ? pois.length + ' Orte in der Nähe' : 'Lade Orte …') : 'Warte auf GPS …'); return; }
+  const place = nearPlace();
+  if (mode === 'betteln') showStatus(packed ? 'Becher eingepackt – du bewegst dich' : (place ? place.label + ' · Einwurf ×' + place.mult.toString().replace('.', ',') : 'Bereit – Handy still halten'));
+  else { const f = nearFundort(); showStatus(f ? 'Fundort: ' + POI_T[f.t].label + ' – doppelte Chance!' : (moving() ? 'Unterwegs – Augen offen!' : 'Beweg dich, sonst findest du nix')); }
 }
 
 // ================= BEWEGUNG =================
@@ -565,7 +597,7 @@ function onPassant(t) {
   if (S.cup >= st.cap) { say('full'); updateUI(); return; }
   S.dry = (S.dry || 0) + 1;
   const pity = S.dry >= PITY;
-  if (pity || Math.random() < (st.chance + S.bonus) * promBonus()) {
+  if (pity || Math.random() < (st.chance + S.bonus) * promBonus() * placeMult() * timeMult()) {
     S.dry = 0;
     let val = r2(rollCoin() * st.mult);
     if (st.lose && !pity && Math.random() < st.lose) { popAt(t.bbox, '-' + money(val) + ' rausgefallen', true); say('lost'); updateUI(); save(); return; }
@@ -617,7 +649,9 @@ function rollItem() {
   return pool[0];
 }
 function spawnFind() {
-  let id = rollItem(); const it = ITEMS[id]; let state = 'ok';
+  let id = rollItem(); const f = nearFundort();
+  if (f && POI_T[f.t].loot && Math.random() < 0.6) { const L = POI_T[f.t].loot; id = L[Math.floor(Math.random() * L.length)]; }
+  const it = ITEMS[id]; let state = 'ok';
   if (it.crush && Math.random() < 0.30) { id = it.crush; state = 'crushed'; }
   else if (it.glass && Math.random() < 0.05) { id = 'scherben'; state = 'broken'; }
   const box = $('finds'); if (box.children.length >= 3) return;
@@ -656,10 +690,139 @@ function collect(el, id, state) {
 setInterval(() => {
   if (!running || mode !== 'suchen') return;
   setStatus();
-  const mv = moving();
-  if (Math.random() < (mv ? 0.28 : 0.05)) spawnFind();
+  const mv = moving(); const f = nearFundort();
+  if (Math.random() < (mv ? 0.28 : 0.05) * (f ? 2 : 1)) spawnFind();
   if (!mv && Date.now() - lastMoveTime > 20000 && Date.now() - lastStillNag > 45000) { lastStillNag = Date.now(); say('still'); }
 }, 3000);
+
+
+// ================= KARTE & ECHTE ORTE (OpenStreetMap) =================
+const POI_T = {
+  glas:   { label:'Glascontainer', color:'#4A90D9', r:40, loot:['bier_leer','bier_leer','bier_leer','joghurt','buegel','kasten'] },
+  muell:  { label:'Mülleimer', color:'#9A948A', r:30, loot:['dose','pet_einweg','pet_mehrweg','zeitung','kaffee','broetchen','feuerzeug','tuete'] },
+  bank:   { label:'Parkbank', color:'#B07A45', r:30, loot:['bier_leer','dosenbier','socke','schirm','brille','dmark','gebiss','zeitung','rubbellos'] },
+  super:  { label:'Supermarkt · Pfandautomat', color:'#E8A33D', r:80, mult:1.3, loot:['pet_einweg','dose','pet_mehrweg','chip','tuete','broetchen','rollmops'] },
+  bahnhof:{ label:'Bahnhof', color:'#A070E0', r:120, mult:1.5, loot:['dose','pet_einweg','kaffee','uhr','handy','geldboerse','zeitung'] },
+  halt:   { label:'Haltestelle', color:'#C9A5F0', r:30, mult:1.1, loot:['dose','pet_einweg','kaffee','zeitung','senkel'] },
+  kneipe: { label:'Kneipe', color:'#E06A5A', r:50, mult:1.0, nightMult:1.3, loot:['bier_leer','bier_leer','kronkorken','dosenbier','korn','zahn','feuerzeug'] },
+  fuzo:   { label:'Fußgängerzone', color:'#3FB8AF', r:60, mult:1.3, loot:['dose','pet_einweg','kaffee','brille','ring','kette','senkel'] },
+};
+let geo = null, geoWatch = null, pois = [], lastFetch = null, fetching = false;
+let map = null, meMarker = null, poiLayer = null;
+
+function distM(a, b) {
+  const R = 6371000, toR = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * toR, dLon = (b.lon - a.lon) * toR;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * toR) * Math.cos(b.lat * toR) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+function startGeo() {
+  if (!navigator.geolocation || geoWatch !== null) return;
+  geoWatch = navigator.geolocation.watchPosition(onGeo, () => { if (mode === 'karte') showStatus('Kein GPS – Standort erlauben?'); },
+    { enableHighAccuracy:true, maximumAge:5000, timeout:20000 });
+}
+function onGeo(pos) {
+  geo = { lat:pos.coords.latitude, lon:pos.coords.longitude, acc:pos.coords.accuracy };
+  if (!lastFetch || distM(lastFetch, geo) > 300) fetchPois();
+  if (meMarker) meMarker.setLatLng([geo.lat, geo.lon]);
+  if (map && !map._centeredOnce) { map.setView([geo.lat, geo.lon], 17); map._centeredOnce = true; }
+  if (mode === 'karte') renderPoiCard();
+  setStatus();
+}
+function classify(t) {
+  if (t.amenity === 'recycling') return 'glas';
+  if (t.amenity === 'waste_basket') return 'muell';
+  if (t.amenity === 'bench') return 'bank';
+  if (t.shop === 'supermarket') return 'super';
+  if (t.railway === 'station' || t.public_transport === 'station') return 'bahnhof';
+  if (t.highway === 'bus_stop' || t.railway === 'tram_stop') return 'halt';
+  if (t.amenity === 'pub' || t.amenity === 'bar' || t.amenity === 'biergarten') return 'kneipe';
+  if (t.highway === 'pedestrian') return 'fuzo';
+  return null;
+}
+async function fetchPois() {
+  if (fetching || !geo) return; fetching = true;
+  const c = { lat:geo.lat, lon:geo.lon }, R = 600, a = '(around:' + R + ',' + c.lat + ',' + c.lon + ')';
+  const q = '[out:json][timeout:25];(' +
+    'node' + a + '[amenity=recycling];' + 'node' + a + '[amenity=waste_basket];' + 'node' + a + '[amenity=bench];' +
+    'nwr' + a + '[shop=supermarket];' + 'nwr' + a + '[railway=station];' + 'nwr' + a + '[public_transport=station];' +
+    'node' + a + '[highway=bus_stop];' + 'node' + a + '[railway=tram_stop];' +
+    'nwr' + a + '[amenity~"^(pub|bar|biergarten)$"];' + 'way' + a + '[highway=pedestrian];' +
+    ');out center 400;';
+  const urls = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+  for (const u of urls) {
+    try {
+      const res = await fetch(u, { method:'POST', body:'data=' + encodeURIComponent(q), headers:{ 'Content-Type':'application/x-www-form-urlencoded' } });
+      if (!res.ok) continue;
+      const data = await res.json();
+      pois = (data.elements || []).map((e) => {
+        const t = classify(e.tags || {}); const lat = e.lat || (e.center && e.center.lat), lon = e.lon || (e.center && e.center.lon);
+        return t && lat ? { t, lat, lon, name:(e.tags && e.tags.name) || '' } : null;
+      }).filter(Boolean);
+      lastFetch = c; drawPois(); setStatus(); if (mode === 'karte') renderPoiCard();
+      break;
+    } catch (e) {}
+  }
+  fetching = false;
+}
+function withDist() { return geo ? pois.map(p => Object.assign({ d:distM(geo, p) }, p)) : []; }
+function nearestOf(type) { const l = withDist().filter(p => p.t === type).sort((a, b) => a.d - b.d); return l[0] || null; }
+function nearFundort() {
+  const l = withDist().filter(p => POI_T[p.t].loot && p.d <= POI_T[p.t].r).sort((a, b) => a.d - b.d); return l[0] || null;
+}
+function isNight() { const h = new Date().getHours(); return h >= 22 || h < 5; }
+function nearPlace() {
+  let best = null;
+  withDist().forEach((p) => {
+    const T = POI_T[p.t]; let m = (isNight() && T.nightMult) ? T.nightMult : T.mult;
+    if (!m || m <= 1 || p.d > T.r) return;
+    if (!best || m > best.mult) best = { label:T.label, mult:m };
+  });
+  return best;
+}
+function placeMult() { const p = nearPlace(); return p ? p.mult : 1; }
+function timeMult() { const h = new Date().getHours(); if ((h >= 7 && h < 9) || (h >= 16 && h < 19)) return 1.2; if (isNight()) return 0.6; return 1; }
+
+function initMap() {
+  if (map) { setTimeout(() => map.invalidateSize(), 50); return; }
+  if (typeof L === 'undefined') { showStatus('Karte konnte nicht geladen werden'); return; }
+  map = L.map('map', { zoomControl:false, attributionControl:true }).setView(geo ? [geo.lat, geo.lon] : [51.16, 10.45], geo ? 17 : 6);
+  if (geo) map._centeredOnce = true;
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+  poiLayer = L.layerGroup().addTo(map);
+  const icon = L.divIcon({ className:'', html:'<div class="me"><img src="' + I('kalle_belehren') + '" alt=""></div>', iconSize:[46, 46], iconAnchor:[23, 23] });
+  meMarker = L.marker(geo ? [geo.lat, geo.lon] : [51.16, 10.45], { icon, zIndexOffset:1000 }).addTo(map);
+  drawPois(); setTimeout(() => map.invalidateSize(), 50);
+}
+function drawPois() {
+  if (!poiLayer) return; poiLayer.clearLayers();
+  pois.forEach((p) => {
+    const T = POI_T[p.t];
+    const rad = (p.t === 'muell' || p.t === 'bank' || p.t === 'halt') ? 5 : 8;
+    L.circleMarker([p.lat, p.lon], { radius:rad, color:'#1C1A17', weight:1.5, fillColor:T.color, fillOpacity:.95 })
+      .bindPopup('<b>' + T.label + '</b>' + (p.name ? '<br>' + p.name.replace(/</g, '') : '') + '<br>' + poiInfo(p.t))
+      .addTo(poiLayer);
+  });
+}
+function poiInfo(t) {
+  const T = POI_T[t]; const parts = [];
+  if (T.loot) parts.push('Fundort (doppelte Fundchance im Umkreis von ' + T.r + ' m)');
+  if (T.mult > 1) parts.push('Betteln ×' + T.mult.toString().replace('.', ','));
+  if (T.nightMult) parts.push('nachts Betteln ×' + T.nightMult.toString().replace('.', ','));
+  if (t === 'super') parts.push('Hier Pfand abgeben');
+  return parts.join(' · ');
+}
+function renderPoiCard() {
+  const c = $('poiCard');
+  if (!geo) { c.innerHTML = '<b>Warte auf GPS …</b><br>Bitte Standortzugriff erlauben.'; return; }
+  const sm = nearestOf('super'), f = nearFundort(), pl = nearPlace();
+  let html = '';
+  if (f) html += '<b>Fundort: ' + POI_T[f.t].label + '</b> · ' + Math.round(f.d) + ' m – wechsle zu „Suchen“!<br>';
+  if (pl) html += 'Bettelplatz: ' + pl.label + ' ×' + pl.mult.toString().replace('.', ',') + '<br>';
+  html += sm ? 'Nächster Pfandautomat: ' + Math.round(sm.d) + ' m' : (pois.length ? 'Kein Supermarkt im Umkreis' : 'Lade Orte …');
+  html += '<div class="legend">' + Object.keys(POI_T).map(k => '<span><i style="background:' + POI_T[k].color + '"></i>' + POI_T[k].label.split(' ·')[0] + '</span>').join('') + '</div>';
+  c.innerHTML = html;
+}
 
 // ================= TÜTE / VERKAUF =================
 function bagGroups() {
@@ -676,6 +839,10 @@ function sell(filter, kind, label) {
   toast(n + ' Teile · ' + euro(v) + ' (' + label + ')'); say(kind, true); renderBag(); updateUI(); save();
 }
 $('sellPfand').onclick = () => {
+  if (!S.anywhere) {
+    const sm = nearestOf('super');
+    if (!sm || sm.d > 80) { toast(sm ? 'Pfandautomat nur am Supermarkt – nächster: ' + Math.round(sm.d) + ' m' : 'Kein Supermarkt in der Nähe gefunden'); say('nopfand', true); return; }
+  }
   const crushed = S.bag.filter(id => ITEMS[id].cat === 'schrott' && id !== 'scherben').length;
   sell(isPfand, 'sellpfand', 'Pfandautomat');
   if (crushed) setTimeout(() => toast(crushed + ' zerdrückte Teile nimmt der Automat nicht'), 1900);
@@ -794,9 +961,10 @@ $('emptyBtn').onclick = () => {
   S.money = r2(S.money + S.cup); toast(euro(S.cup) + ' eingesackt'); S.cup = 0; updateUI(); save(); say('emptied');
 };
 $('bagBtn').onclick = () => { renderBag(); $('bagSheet').classList.add('open'); };
-$('shopBtn').onclick = () => { renderShop(); $('shopSheet').classList.add('open'); };
+$('shopBtn').onclick = () => { $('anywhereBox').checked = !!S.anywhere; renderShop(); $('shopSheet').classList.add('open'); };
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $(b.dataset.close).classList.remove('open'));
 $('debugBox').onchange = (e) => { showDebug = e.target.checked; if (!showDebug) clearOverlay(); };
+$('anywhereBox').onchange = (e) => { S.anywhere = e.target.checked; save(); };
 $('resetBtn').onclick = () => {
   if (!confirm('Spielstand wirklich löschen?')) return;
   const lv = S.level; S = { money:0, stage:0, cup:0, level:lv, prom:0, passanten:0, coins:0, bag:[], bagCap:20, bonus:0, ruf:0, used:{}, finds:0 }; save(); renderShop(); updateUI();
@@ -813,6 +981,10 @@ function updateUI() {
     $('barName').textContent = 'Becher';
     $('barFill').textContent = euro(S.cup) + ' / ' + euro(st.cap).replace(',00', '');
     $('mainBar').style.width = Math.min(100, S.cup / st.cap * 100) + '%';
+  } else if (mode === 'karte') {
+    $('infoPill').textContent = pois.length + ' Orte';
+    $('barName').textContent = 'Tüte'; $('barFill').textContent = S.bag.length + ' / ' + S.bagCap;
+    $('mainBar').style.width = Math.min(100, S.bag.length / S.bagCap * 100) + '%';
   } else {
     $('infoPill').textContent = S.finds + ' Funde';
     $('barName').textContent = 'Tüte';
