@@ -515,6 +515,7 @@ let packed = false, lastCoinTime = Date.now(), showDebug = true;
 
 $('startBtn').onclick = async () => {
   $('startErr').textContent = '';
+  startGeo();
   try { if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') await DeviceMotionEvent.requestPermission(); } catch (e) {}
   window.addEventListener('devicemotion', onMotion);
   try {
@@ -523,7 +524,6 @@ $('startBtn').onclick = async () => {
   } catch (e) { $('startErr').textContent = 'Kamera nicht verfügbar. Bitte Kamera-Zugriff erlauben.'; return; }
   $('start').classList.remove('active'); $('game').classList.add('active');
   running = true; tracks = []; lastCoinTime = Date.now();
-  startGeo();
   setMode(mode, true); say('start', true);
   if (!model) {
     $('status').textContent = 'KI wird geladen … (beim ersten Mal ca. 10 Sek.)';
@@ -755,13 +755,22 @@ function distM(a, b) {
   const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * toR) * Math.cos(b.lat * toR) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(x));
 }
+let geoError = '';
+function onGeoErr(err) {
+  geoError = err && err.code === 1 ? 'denied' : 'other';
+  if (geoWatch !== null && err && err.code === 1) { navigator.geolocation.clearWatch(geoWatch); geoWatch = null; }
+  if (mode === 'karte') { renderPoiCard(); showStatus('Kein Standort'); }
+}
 function startGeo() {
-  if (!navigator.geolocation || geoWatch !== null) return;
-  geoWatch = navigator.geolocation.watchPosition(onGeo, () => { if (mode === 'karte') showStatus('Kein GPS – Standort erlauben?'); },
-    { enableHighAccuracy:true, maximumAge:5000, timeout:20000 });
+  if (!navigator.geolocation) { geoError = 'nosupport'; return; }
+  if (geoWatch !== null) return;
+  geoError = '';
+  // erst eine einzelne Abfrage (löst auf dem iPhone sicher die Freigabe-Frage aus), dann laufend verfolgen
+  navigator.geolocation.getCurrentPosition(onGeo, onGeoErr, { enableHighAccuracy:true, timeout:20000 });
+  geoWatch = navigator.geolocation.watchPosition(onGeo, onGeoErr, { enableHighAccuracy:true, maximumAge:5000, timeout:30000 });
 }
 function onGeo(pos) {
-  geo = { lat:pos.coords.latitude, lon:pos.coords.longitude, acc:pos.coords.accuracy };
+  geo = { lat:pos.coords.latitude, lon:pos.coords.longitude, acc:pos.coords.accuracy }; geoError = '';
   if (!lastFetch || distM(lastFetch, geo) > 300) fetchPois();
   if (meMarker) meMarker.setLatLng([geo.lat, geo.lon]);
   if (map && !map._centeredOnce) { map.setView([geo.lat, geo.lon], 17); map._centeredOnce = true; }
@@ -853,7 +862,12 @@ function poiInfo(t) {
 }
 function renderPoiCard() {
   const c = $('poiCard');
-  if (!geo) { c.innerHTML = '<b>Warte auf GPS …</b><br>Bitte Standortzugriff erlauben.'; return; }
+  if (!geo) {
+    if (geoError === 'denied') c.innerHTML = '<b>Standort ist gesperrt.</b><br>iPhone: Einstellungen → Datenschutz &amp; Sicherheit → Ortungsdienste → einschalten, dann „Safari-Websites“ → „Beim Verwenden der App“. Danach in Safari auf „aA“ → Website-Einstellungen → Standort → Erlauben. Seite neu laden.<br><button class="btn" style="height:44px;font-size:14px;margin-top:8px" id="geoBtn">Nochmal versuchen</button>';
+    else c.innerHTML = '<b>Warte auf GPS …</b><br>Tippe auf den Knopf, damit dein Handy nach dem Standort fragt.<br><button class="btn" style="height:44px;font-size:14px;margin-top:8px" id="geoBtn">Standort freigeben</button>';
+    const b = document.getElementById('geoBtn'); if (b) b.onclick = () => { if (geoWatch !== null) { navigator.geolocation.clearWatch(geoWatch); geoWatch = null; } startGeo(); showStatus('Frage Standort an …'); };
+    return;
+  }
   const sm = nearestOf('super'), f = nearFundort(), pl = nearPlace();
   let html = '';
   if (f) html += '<b>Fundort: ' + POI_T[f.t].label + '</b> · ' + Math.round(f.d) + ' m – wechsle zu „Suchen“!<br>';
