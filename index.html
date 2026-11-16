@@ -31,21 +31,23 @@
   #game video, #game canvas#overlay { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .hud { position:absolute; left:12px; right:12px; top:calc(env(safe-area-inset-top) + 10px); display:flex; flex-direction:column; gap:8px; z-index:5; }
   .row { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-  .pill { background:rgba(28,26,23,.88); border-radius:22px; padding:7px 14px; font-weight:600; font-size:13px; }
-  .money { display:flex; align-items:center; gap:8px; }
-  .money .dot { width:14px; height:14px; border-radius:50%; background:var(--gold); }
-  .money b { font-family:Anton, sans-serif; font-size:22px; font-weight:400; }
-  .seg { display:flex; background:rgba(28,26,23,.88); border-radius:14px; padding:4px; gap:4px; }
-  .seg button { flex:1; height:40px; border:none; border-radius:10px; background:transparent; color:var(--text); font-weight:700; font-size:14px; }
-  .seg button.on { background:var(--gold); color:var(--bg); }
-  .panel { background:rgba(28,26,23,.88); border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
-  .bar-label { display:flex; justify-content:space-between; font-size:12px; font-weight:600; }
-  .bar { height:8px; background:#3B3A36; border-radius:4px; overflow:hidden; }
-  .bar > div { height:100%; background:var(--gold); width:0%; transition:width .3s; }
-  .bar.prom > div { background:var(--green); }
-  #status { font-size:12px; text-align:center; }
-  .exit { width:40px; height:40px; border:none; border-radius:50%; background:rgba(28,26,23,.88); color:var(--text); display:flex; align-items:center; justify-content:center; padding:0; }
-  #becherImg { position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom) + 220px); transform:translateX(-50%); width:110px; height:110px; border-radius:50%; object-fit:cover; border:3px solid var(--gold); z-index:4; transition:opacity .3s; }
+  .pill { background:rgba(28,26,23,.6); border-radius:18px; padding:5px 11px; font-weight:600; font-size:12px; }
+  .money { display:flex; align-items:center; gap:6px; }
+  .money .dot { width:11px; height:11px; border-radius:50%; background:var(--gold); }
+  .money b { font-family:Anton, sans-serif; font-size:18px; font-weight:400; }
+  .seg { display:flex; background:rgba(28,26,23,.6); border-radius:18px; padding:3px; gap:2px; }
+  .seg button { height:30px; padding:0 12px; border:none; border-radius:15px; background:transparent; color:#D9D3C8; font-weight:600; font-size:12px; }
+  .seg button.on { background:rgba(232,163,61,.9); color:var(--bg); }
+  .mini { display:flex; gap:6px; justify-content:flex-end; }
+  .chip { background:rgba(28,26,23,.5); border-radius:10px; padding:4px 8px; font-size:11px; font-weight:600; display:flex; flex-direction:column; gap:3px; min-width:92px; }
+  .chip .lbl { display:flex; justify-content:space-between; gap:6px; color:#E9E3D8; }
+  .minibar { height:3px; background:rgba(255,255,255,.18); border-radius:2px; overflow:hidden; }
+  .minibar > div { height:100%; background:var(--gold); width:0%; transition:width .3s; }
+  .minibar.prom > div { background:var(--green); }
+  #status { position:absolute; left:50%; top:calc(env(safe-area-inset-top) + 92px); transform:translateX(-50%); font-size:11px; color:#E9E3D8; background:rgba(28,26,23,.45); padding:4px 10px; border-radius:10px; white-space:nowrap; transition:opacity .6s; z-index:5; }
+  #status.hide { opacity:0; }
+  .exit { width:34px; height:34px; border:none; border-radius:50%; background:rgba(28,26,23,.6); color:var(--text); display:flex; align-items:center; justify-content:center; padding:0; }
+  #becherImg { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom) + 82px); width:84px; height:84px; border-radius:50%; object-fit:cover; border:2px solid rgba(232,163,61,.9); z-index:4; transition:opacity .3s; }
   #becherImg.packed { opacity:.25; }
   .coinpop { position:absolute; z-index:8; font-family:Anton, sans-serif; font-size:30px; color:#F5C46E; text-shadow:0 2px 6px rgba(0,0,0,.6); pointer-events:none; animation:pop 1.4s ease-out forwards; }
   .coinpop.lost { color:#E06A5A; font-size:20px; }
@@ -60,7 +62,7 @@
   @keyframes bob { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-8px) } }
   @keyframes appear { from{ transform:scale(0) } to{ transform:scale(1) } }
 
-  .kalle-bar { position:absolute; left:10px; right:10px; bottom:calc(env(safe-area-inset-bottom) + 84px); display:flex; align-items:flex-end; gap:8px; z-index:9;
+  .kalle-bar { position:absolute; left:10px; right:10px; bottom:calc(env(safe-area-inset-bottom) + 176px); display:flex; align-items:flex-end; gap:8px; z-index:9;
     transform:translateX(-110%); opacity:0; transition:transform .35s ease-out, opacity .35s; pointer-events:none; }
   .kalle-bar.show { transform:translateX(0); opacity:1; }
   .kalle-bar img { width:84px; height:140px; object-fit:cover; object-position:top; border-radius:14px; background:#DAD8D3; flex:none; }
@@ -116,23 +118,19 @@
   <div class="hud">
     <div class="row">
       <div class="pill money"><span class="dot"></span><b id="money">0,00 €</b></div>
-      <div class="row" style="gap:8px">
-        <div class="pill" id="infoPill">0 Passanten</div>
-        <button class="exit" id="exitBtn" aria-label="Spiel beenden"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="seg" role="tablist">
+        <button id="modeBetteln" class="on" role="tab">Betteln</button>
+        <button id="modeSuchen" role="tab">Suchen</button>
       </div>
+      <button class="exit" id="exitBtn" aria-label="Spiel beenden"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
-    <div class="seg" role="tablist">
-      <button id="modeBetteln" class="on" role="tab">Betteln</button>
-      <button id="modeSuchen" role="tab">Suchen</button>
-    </div>
-    <div class="panel">
-      <div class="bar-label"><span id="barName">Becher</span><span id="barFill">0,00 / 2,00 €</span></div>
-      <div class="bar"><div id="mainBar"></div></div>
-      <div class="bar-label"><span>Promille</span><span id="promText">0,0 ‰</span></div>
-      <div class="bar prom"><div id="promBar"></div></div>
-      <div id="status">KI wird geladen …</div>
+    <div class="mini">
+      <div class="chip"><div class="lbl"><span id="barName">Becher</span><span id="barFill">0,00 €</span></div><div class="minibar"><div id="mainBar"></div></div></div>
+      <div class="chip" style="min-width:70px"><div class="lbl"><span>‰</span><span id="promText">0,0</span></div><div class="minibar prom"><div id="promBar"></div></div></div>
+      <div class="chip" style="min-width:0;justify-content:center"><span id="infoPill">0 Passanten</span></div>
     </div>
   </div>
+  <div id="status">KI wird geladen …</div>
 
   <img id="becherImg" src="data:image/jpeg;base64,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" alt="Dein Becher">
 
@@ -496,10 +494,16 @@ function setMode(m, silent) {
 }
 $('modeBetteln').onclick = () => { if (mode !== 'betteln') setMode('betteln'); };
 $('modeSuchen').onclick = () => { if (mode !== 'suchen') setMode('suchen'); };
+let statusTimer = null, lastStatus = '';
+function showStatus(t) {
+  if (t === lastStatus) return; lastStatus = t;
+  const el = $('status'); el.textContent = t; el.classList.remove('hide');
+  clearTimeout(statusTimer); statusTimer = setTimeout(() => el.classList.add('hide'), 3500);
+}
 function setStatus() {
   if (!model) return;
-  if (mode === 'betteln') $('status').textContent = packed ? 'Becher eingepackt – du bewegst dich.' : 'Bereit – halte das Handy still.';
-  else $('status').textContent = moving() ? 'Unterwegs – halt die Augen offen!' : 'Beweg dich, sonst findest du nix.';
+  if (mode === 'betteln') showStatus(packed ? 'Becher eingepackt – du bewegst dich' : 'Bereit – Handy still halten');
+  else showStatus(moving() ? 'Unterwegs – Augen offen!' : 'Beweg dich, sonst findest du nix');
 }
 
 // ================= BEWEGUNG =================
@@ -805,19 +809,19 @@ function updateUI() {
   const st = STAGES[S.stage];
   $('money').textContent = euro(S.money);
   if (mode === 'betteln') {
-    $('infoPill').textContent = S.passanten + ' Passanten';
-    $('barName').textContent = st.name;
-    $('barFill').textContent = euro(S.cup) + ' / ' + euro(st.cap);
+    $('infoPill').textContent = S.passanten + ' Pass.';
+    $('barName').textContent = 'Becher';
+    $('barFill').textContent = euro(S.cup) + ' / ' + euro(st.cap).replace(',00', '');
     $('mainBar').style.width = Math.min(100, S.cup / st.cap * 100) + '%';
   } else {
     $('infoPill').textContent = S.finds + ' Funde';
     $('barName').textContent = 'Tüte';
-    $('barFill').textContent = S.bag.length + ' / ' + S.bagCap + ' Plätze';
+    $('barFill').textContent = S.bag.length + ' / ' + S.bagCap;
     $('mainBar').style.width = Math.min(100, S.bag.length / S.bagCap * 100) + '%';
   }
   $('becherImg').src = I(st.img);
   const b = promBonus();
-  $('promText').textContent = S.prom.toFixed(1).replace('.', ',') + ' ‰' + (b > 1 ? ' · Gute Laune +20 %' : b < 1 ? ' · Leute meiden dich' : '') + (S.prom >= 2.5 ? ' · Hände zittern' : '');
+  $('promText').textContent = S.prom.toFixed(1).replace('.', ',') + (b > 1 ? ' +20%' : b < 1 ? ' −30%' : '');
   $('promBar').style.width = Math.min(100, S.prom / 4 * 100) + '%';
 }
 updateUI();
