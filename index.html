@@ -218,6 +218,7 @@
     <button id="shopBtn">Shop<span>Becher &amp; Kiosk</span></button>
     <button id="openWx">Wetter<span id="wxBadge">–</span></button>
     <button id="openHome" style="grid-column:1 / -1">Zuhause &amp; Fahrzeug<span id="homeBadge">Pappkarton</span></button>
+    <button id="openReport" style="grid-column:1 / -1;background:#3A2F1F">Testbericht senden<span>Hilf mit, das Spiel besser zu machen</span></button>
   </div>
 </div></div>
 
@@ -254,6 +255,16 @@
   <h3>Unterkunft</h3><div id="homeList" style="display:flex;flex-direction:column;gap:8px"></div>
   <h3>Fahrzeug</h3><div id="carList" style="display:flex;flex-direction:column;gap:8px"></div>
   <h3>Ausrüstung</h3><div id="gearList" style="display:flex;flex-direction:column;gap:8px"></div>
+</div></div>
+
+<div class="sheet" id="reportSheet"><div class="inner">
+  <div class="row"><h2>TESTBERICHT</h2><button class="btn dark" style="width:auto;height:40px;padding:0 16px;font-size:14px" data-close="reportSheet">Schließen</button></div>
+  <p class="note" style="margin:0">Danke fürs Testen! Beantworte kurz die Fragen und tippe auf „Senden“. Du siehst vorher genau, was verschickt wird. Es werden keine Bilder, keine Orte und keine Namen außer deinem Spielernamen übertragen.</p>
+  <div id="repQ" style="display:flex;flex-direction:column;gap:12px"></div>
+  <h3>Deine Spielstatistik</h3>
+  <pre id="repStats" style="white-space:pre-wrap;font:12px/1.5 Inter, sans-serif;color:#D9D3C8;background:#2A2622;border-radius:12px;padding:10px;margin:0"></pre>
+  <button class="btn" id="repSend">Senden (WhatsApp, E-Mail …)</button>
+  <button class="btn dark" id="repCopy" style="height:44px;font-size:14px">Nur kopieren</button>
 </div></div>
 
 <div class="sheet" id="dexSheet"><div class="inner">
@@ -684,9 +695,10 @@ const LINES = {
 
 // ================= ZUSTAND =================
 const SAVE_KEY = 'platteMachen_v1';
-let S = { money:0, stage:0, cup:0, level:2, prom:0, passanten:0, coins:0, bag:[], bagCap:20, bonus:0, ruf:0, used:{}, finds:0, xp:0, lv:1, dex:{}, tasks:null, taskDay:'', streak:0, lastDoneDay:'', dog:null, skills:{}, learning:null, eggs:[], boosts:{}, km:0, home:0, car:0, homeDay:'' };
+let S = { money:0, stage:0, cup:0, level:2, prom:0, passanten:0, coins:0, bag:[], bagCap:20, bonus:0, ruf:0, used:{}, finds:0, xp:0, lv:1, dex:{}, tasks:null, taskDay:'', streak:0, lastDoneDay:'', dog:null, skills:{}, learning:null, eggs:[], boosts:{}, km:0, home:0, car:0, homeDay:'', st:null };
 try { const raw = localStorage.getItem(SAVE_KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch(e) {}
 if (!Array.isArray(S.bag)) S.bag = [];
+if (!S.st) S.st = { first:Date.now(), days:[], sessions:0, ms:0, beg:0, search:0, map:0 };
 if (!S.home) S.home = 0; if (!S.car) S.car = 0;
 if (S.bagCap > 40) S.bagCap = 40;  // Fehler-Korrektur: Plastiktüten waren unbegrenzt
 if (S.used && S.used.wagen && !S.car) { S.car = 1; S.bagCap = Math.max(20, S.bagCap - 20); }
@@ -757,6 +769,7 @@ $('startBtn').onclick = async () => {
   } catch (e) { $('startErr').textContent = 'Kamera nicht verfügbar. Bitte Kamera-Zugriff erlauben.'; return; }
   $('start').classList.remove('active'); $('game').classList.add('active');
   running = true; tracks = []; lastCoinTime = Date.now(); homeDaily();
+  S.st.sessions++; const dk = dayKey(); if (S.st.days.indexOf(dk) < 0) S.st.days.push(dk); lastStatTick = Date.now(); save();
   setMode(mode, true);
   say('start', true);
   if (S.name && Math.random() < 0.5) { const g = [['Moin, ' + S.name + '! Schön, dass du da bist.'], ['Na, ' + S.name + ', auch mal wieder da?'], [S.name + '?! Was für ein bescheuerter Name. Passt aber zu dir.']][S.level - 1][0]; $('kalleText').textContent = '„' + g + '“'; }
@@ -769,7 +782,7 @@ $('startBtn').onclick = async () => {
 };
 
 $('exitBtn').onclick = () => {
-  running = false;
+  statTick(); running = false;
   if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
   window.removeEventListener('devicemotion', onMotion);
   if (geoWatch !== null) { navigator.geolocation.clearWatch(geoWatch); geoWatch = null; }
@@ -1715,6 +1728,83 @@ function renderHome() {
   });
 }
 $('openHome').onclick = () => { $('menuSheet').classList.remove('open'); renderHome(); $('homeSheet').classList.add('open'); };
+
+
+// ================= TESTBERICHT (lokal, nur auf Wunsch geteilt) =================
+const VERSION = 'v17';
+let lastStatTick = Date.now();
+function statTick() {
+  if (!running) { lastStatTick = Date.now(); return; }
+  const now = Date.now(), d = Math.min(now - lastStatTick, 120000);   // max. 2 Min. pro Takt (Handy im Standby zählt nicht)
+  lastStatTick = now; S.st.ms += d;
+  if (mode === 'betteln') S.st.beg += d; else if (mode === 'suchen') S.st.search += d; else S.st.map += d;
+}
+setInterval(() => { statTick(); save(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { statTick(); save(); } else lastStatTick = Date.now(); });
+const REP_Q = [
+  { id:'spass', t:'Wie viel Spaß macht dir das Spiel?', type:'stars', lo:'keinen', hi:'sehr viel' },
+  { id:'erkennung', t:'Wie gut erkennt die Kamera die Passanten?', type:'stars', lo:'schlecht', hi:'super' },
+  { id:'kalle', t:'Kalle ist …', type:'stars', lo:'nervig', hi:'saulustig' },
+  { id:'tempo', t:'Wie fühlt sich das Geld-Tempo an?', type:'choice', o:['zu langsam', 'genau richtig', 'zu schnell'] },
+  { id:'weiter', t:'Würdest du weiterspielen?', type:'choice', o:['Ja', 'Vielleicht', 'Nein'] },
+  { id:'unangenehm', t:'Gab es unangenehme Situationen, weil du Leute „gefilmt“ hast?', type:'choice', o:['Nein', 'Ein bisschen', 'Ja'] },
+  { id:'gut', t:'Was gefällt dir am besten?', type:'text' },
+  { id:'schlecht', t:'Was nervt oder fehlt dir?', type:'text' },
+  { id:'fehler', t:'Fehler oder Abstürze? (wo, was ist passiert?)', type:'text' },
+];
+const repA = {};
+function renderReport() {
+  statTick();
+  const box = $('repQ'); box.innerHTML = '';
+  REP_Q.forEach((q) => {
+    const d = document.createElement('div'); d.className = 'task';
+    const l = document.createElement('b'); l.textContent = q.t; l.style.fontSize = '14px'; d.appendChild(l);
+    if (q.type === 'text') {
+      const ta = document.createElement('textarea'); ta.rows = 2; ta.value = repA[q.id] || ''; ta.setAttribute('aria-label', q.t);
+      ta.style.cssText = 'width:100%;border-radius:10px;border:2px solid #3B3A36;background:#1C1A17;color:#F2EDE4;font:14px Inter, sans-serif;padding:8px;box-sizing:border-box';
+      ta.oninput = () => { repA[q.id] = ta.value; renderStats(); }; d.appendChild(ta);
+    } else {
+      const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+      const opts = q.type === 'stars' ? ['1', '2', '3', '4', '5'] : q.o;
+      opts.forEach((o) => {
+        const b = document.createElement('button'); b.textContent = o;
+        const on = repA[q.id] === o;
+        b.style.cssText = 'flex:1;min-width:44px;height:40px;border:none;border-radius:10px;font-weight:700;font-size:13px;background:' + (on ? '#E8A33D' : '#3B3A36') + ';color:' + (on ? '#1C1A17' : '#F2EDE4');
+        b.onclick = () => { repA[q.id] = o; renderReport(); }; row.appendChild(b);
+      });
+      d.appendChild(row);
+      if (q.type === 'stars') { const n = document.createElement('div'); n.className = 'note'; n.textContent = '1 = ' + q.lo + ' · 5 = ' + q.hi; d.appendChild(n); }
+    }
+    box.appendChild(d);
+  });
+  renderStats();
+}
+function fmtDur(ms) { const m = Math.round(ms / 60000); return m >= 60 ? Math.floor(m / 60) + ' Std. ' + (m % 60) + ' Min.' : m + ' Min.'; }
+function reportText() {
+  const daysSince = Math.floor((Date.now() - S.st.first) / 86400000) + 1;
+  const ua = navigator.userAgent || ''; const dev = /iPhone|iPad/.test(ua) ? 'iPhone/iPad' : /Android/.test(ua) ? 'Android' : 'anderes';
+  const L = [];
+  L.push('PLATTE MACHEN – Testbericht (' + VERSION + ')');
+  L.push('Spieler: ' + (S.name || '?') + ' · Gerät: ' + dev);
+  L.push('');
+  L.push('Seit erstem Start: ' + daysSince + ' Tage · gespielt an ' + S.st.days.length + ' Tagen');
+  L.push('Sitzungen: ' + S.st.sessions + ' · Spielzeit gesamt: ' + fmtDur(S.st.ms) + ' · Ø pro Sitzung: ' + fmtDur(S.st.sessions ? S.st.ms / S.st.sessions : 0));
+  L.push('Davon Betteln ' + fmtDur(S.st.beg) + ' · Suchen ' + fmtDur(S.st.search) + ' · Karte ' + fmtDur(S.st.map));
+  L.push('Level ' + S.lv + ' · Becher ' + (S.stage + 1) + ' · Pfanddex ' + DEX_IDS().filter(id => S.dex[id]).length + '/' + DEX_IDS().length + ' · Serie ' + S.streak);
+  L.push('Passanten ' + S.passanten + ' · Einwürfe ' + S.coins + ' · Funde ' + S.finds + ' · Geld ' + euro(S.money));
+  L.push('Begleiter: ' + (S.dog ? PETS[petType()].label + ' Lv ' + dogLevel() : '–') + ' · Härtestufe ' + S.level + ' · Unterkunft ' + HOMES[S.home].name);
+  L.push('');
+  REP_Q.forEach((q) => { const a = repA[q.id]; L.push(q.t + ' → ' + (a ? a : '–')); });
+  return L.join('\n');
+}
+function renderStats() { $('repStats').textContent = reportText(); }
+$('openReport').onclick = () => { $('menuSheet').classList.remove('open'); renderReport(); $('reportSheet').classList.add('open'); };
+$('repSend').onclick = async () => {
+  const t = reportText();
+  if (navigator.share) { try { await navigator.share({ title:'Platte Machen – Testbericht', text:t }); toast('Danke fürs Testen!'); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(t); toast('Kopiert – füg es in WhatsApp oder eine Mail ein.'); } catch (e) { toast('Teilen nicht möglich – bitte Text markieren und kopieren.'); }
+};
+$('repCopy').onclick = async () => { try { await navigator.clipboard.writeText(reportText()); toast('Kopiert!'); } catch (e) { toast('Kopieren nicht möglich.'); } };
 
 // ================= CHEAT-MENÜ (Tester) =================
 let infoTaps = [];
