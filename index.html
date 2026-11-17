@@ -612,7 +612,7 @@ let running = false, model = null, mode = 'betteln';
 const video = $('video'), canvas = $('overlay'), ctx = canvas.getContext('2d');
 let packed = false, lastCoinTime = Date.now(), showDebug = true;
 
-const BAD = ['hitler','nazi','fick','fotze','hure','nigg','neger','schwuchtel','spast','kanake','missgeburt','wichser','arsch','penis','vagina','sieg heil','88'];
+const BAD = ['hitler','siegheil','nigg','neger','kanake','schwuchtel'];
 function checkName(n) {
   n = (n || '').trim().replace(/\s+/g, ' ');
   if (n.length < 3) return [null, 'Mindestens 3 Zeichen.'];
