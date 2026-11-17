@@ -160,6 +160,7 @@
     <div class="mini">
       <div class="chip"><div class="lbl"><span id="barName">Becher</span><span id="barFill">0,00 €</span></div><div class="minibar"><div id="mainBar"></div></div></div>
       <div class="chip" style="min-width:70px"><div class="lbl"><span>‰</span><span id="promText">0,0</span></div><div class="minibar prom"><div id="promBar"></div></div></div>
+      <div class="chip" id="wxChip" style="min-width:0;justify-content:center;display:none"><span id="wxText"></span></div>
       <div class="chip" id="infoChip" style="min-width:0;justify-content:center;cursor:pointer"><span id="infoPill">0 Passanten</span></div>
     </div>
   </div>
@@ -212,7 +213,10 @@
     <button id="openTasks">Aufgaben<span id="taskBadge">0 / 3</span></button>
     <button id="openDex">Pfanddex<span id="dexBadge">0 / 0</span></button>
     <button id="openDog">Hund<span id="dogBadge">noch keiner</span></button>
+    <button id="openSkills">Weiterbildung<span id="skillBadge">–</span></button>
+    <button id="openEggs">Überraschungen<span id="eggBadge">0 / 3</span></button>
     <button id="shopBtn">Shop<span>Becher &amp; Kiosk</span></button>
+    <button id="openWx">Wetter<span id="wxBadge">–</span></button>
   </div>
 </div></div>
 
@@ -221,6 +225,26 @@
   <div class="stats" id="streakInfo"></div>
   <div id="taskList" style="display:flex;flex-direction:column;gap:8px"></div>
   <p class="note">Neue Aufgaben gibt’s jeden Tag um Mitternacht. Jeder Tag mit mindestens einer erledigten Aufgabe zählt für deine Serie. Alle 7 Tage gibt’s eine Überraschung.</p>
+</div></div>
+
+<div class="sheet" id="skillSheet"><div class="inner">
+  <div class="row"><h2>WEITERBILDUNG</h2><button class="btn dark" style="width:auto;height:40px;padding:0 16px;font-size:14px" data-close="skillSheet">Schließen</button></div>
+  <div class="stats" id="skillInfo"></div>
+  <div id="skillList" style="display:flex;flex-direction:column;gap:8px"></div>
+  <p class="note">Du kannst immer nur eine Sache gleichzeitig lernen. Die Zeit läuft auch weiter, wenn das Spiel zu ist.</p>
+</div></div>
+
+<div class="sheet" id="eggSheet"><div class="inner">
+  <div class="row"><h2>ÜBERRASCHUNGEN</h2><button class="btn dark" style="width:auto;height:40px;padding:0 16px;font-size:14px" data-close="eggSheet">Schließen</button></div>
+  <div class="stats" id="eggInfo"></div>
+  <div id="eggList" style="display:flex;flex-direction:column;gap:8px"></div>
+  <p class="note">Überraschungstüten findest du beim Suchen. Sie gehen erst auf, wenn du die angegebene Strecke gelaufen bist. Du kannst bis zu 3 gleichzeitig mitschleppen.</p>
+</div></div>
+
+<div class="sheet" id="wxSheet"><div class="inner">
+  <div class="row"><h2>WETTER</h2><button class="btn dark" style="width:auto;height:40px;padding:0 16px;font-size:14px" data-close="wxSheet">Schließen</button></div>
+  <div class="stats" id="wxInfo"></div>
+  <p class="note">Wetterdaten: Open-Meteo.com. Dafür wird dein ungefährer Standort übertragen.</p>
 </div></div>
 
 <div class="sheet" id="dexSheet"><div class="inner">
@@ -268,6 +292,8 @@
   </div>
   <h3>Fortschritt</h3>
   <div class="sell">
+    <button data-cheat="learnfast">Lernen fertig</button><button data-cheat="km5">+5 km laufen</button><button data-cheat="eggs">3 Überraschungen</button>
+    <button data-cheat="wx">Wetter wechseln</button><button data-cheat="boosts">Lockmittel an</button><button data-cheat="cold">Kälte an/aus</button>
     <button data-cheat="xp">+200 XP</button><button data-cheat="dog">Hund holen</button><button data-cheat="dogkm">Hund +2 km</button>
     <button data-cheat="hunger">Hund hungrig</button><button data-cheat="tasksdone">Aufgaben erledigen</button><button data-cheat="newday">Neuer Tag</button>
   </div>
@@ -338,7 +364,7 @@ const ITEMS = {
   tuete:         { name:'Plastiktüte', cat:'nuetz', r:'g', use:'bag5', w:1 },
   karton:        { name:'Pappkarton', cat:'nuetz', r:'g', use:'bonus', bonus:0.03, w:1 },
   schild:        { name:'Pappschild', cat:'nuetz', r:'s', use:'bonus', bonus:0.05, w:1 },
-  decke:         { name:'Wolldecke', cat:'nuetz', r:'s', v:1.00, w:1 },
+  decke:         { name:'Wolldecke', cat:'nuetz', r:'s', v:1.00, use:'cold', w:1 },
   isomatte:      { name:'Isomatte', cat:'nuetz', r:'s', v:1.50, w:1 },
   thermos:       { name:'Thermoskanne', cat:'nuetz', r:'s', v:1.00, w:1 },
   harmonika:     { name:'Mundharmonika', cat:'nuetz', r:'e', use:'bonus', bonus:0.08, w:1 },
@@ -354,6 +380,11 @@ const ITEMS = {
   ring:          { name:'Verlorener Ehering', cat:'rar', r:'l', v:45, fund:true, w:1 },
   kette:         { name:'Dicke Goldkette', cat:'rar', r:'l', v:120, w:1 },
   hundefutter:   { name:'Hundefutter', cat:'hund', r:'g', feed:50, spawn:false, nodex:true },
+  egg2:          { name:'Überraschungstüte (2 km)', cat:'egg', r:'s', km:2, w:1, nodex:true },
+  egg5:          { name:'Überraschungstüte (5 km)', cat:'egg', r:'e', km:5, w:1, nodex:true },
+  egg10:         { name:'Überraschungstüte (10 km)', cat:'egg', r:'l', km:10, w:1, nodex:true },
+  lock_mitleid:  { name:'Mitleidsschild (30 Min.)', cat:'boost', r:'s', boost:'mitleid', spawn:false, nodex:true },
+  lock_magnet:   { name:'Flaschenmagnet (30 Min.)', cat:'boost', r:'s', boost:'magnet', spawn:false, nodex:true },
 };
 const RAR_W = { g:60, s:25, e:12, l:3 };
 
@@ -563,14 +594,60 @@ const LINES = {
     ['Dein Hund hat was Besonderes erschnüffelt!'],
     ['Spürnase! Der Hund hat’s gefunden, nicht du.'],
     ['Der Hund hat’s gefunden. Du hättest es nicht mal gesehen, wenn’s dich gebissen hätte.']
+  ],
+  skillstart: [
+    ['Weiterbildung! Lebenslanges Lernen, sag ich immer.'],
+    ['Du bildest dich weiter? Mutig, bei der Ausgangslage.'],
+    ['Weiterbildung. Bei dir ist das eher Erstbildung.']
+  ],
+  skilldone: [
+    ['Ausgelernt! Du wirst immer besser.'],
+    ['Fertig gelernt. Sokrates würde dir glatt die Hand geben. Mit Handschuh.'],
+    ['Gelernt. Hat ja nur ewig gedauert, du Spätzünder.']
+  ],
+  eggfound: [
+    ['Eine Überraschungstüte! Lauf ein Stück, dann geht sie auf.'],
+    ['Überraschungstüte! Jetzt beweg mal deine Hufe.'],
+    ['Überraschungstüte. Wahrscheinlich ist ’n toter Hamster drin. Lauf trotzdem.']
+  ],
+  eggopen: [
+    ['Die Tüte ist auf! Mal sehen, was drin ist …'],
+    ['Aufgemacht! Weihnachten für Arme. Also für dich.'],
+    ['Tüte auf. Der Inhalt ist mehr wert als dein ganzer Stammbaum.']
+  ],
+  boost: [
+    ['Lockmittel aktiv! Jetzt läuft’s.'],
+    ['Lockmittel an. Ein bisschen Nachhilfe brauchst du ja.'],
+    ['Lockmittel an. Ohne Hilfsmittel wird bei dir ja eh nix.']
+  ],
+  wetter_regen: [
+    ['Es regnet. Gut fürs Mitleid, schlecht für die Funde.'],
+    ['Regen. Endlich mal ’ne Dusche für dich.'],
+    ['Es regnet. Der einzige Moment, in dem du halbwegs sauber bist.']
+  ],
+  wetter_sonne: [
+    ['Die Sonne scheint! Draußen trinken die Leute – mehr Leergut.'],
+    ['Sonne! Die Leute saufen im Park, du sammelst hinterher. Arbeitsteilung.'],
+    ['Sonne. Jetzt sieht man erst richtig, wie fertig du aussiehst.']
+  ],
+  wetter_schnee: [
+    ['Schnee! Mitleid gibt’s reichlich, Funde kaum.'],
+    ['Schnee. Pass auf, dass du nicht festfrierst.'],
+    ['Schnee. Wenn du erfrierst, merkt’s eh keiner.']
+  ],
+  wetter_kalt: [
+    ['Ganz schön kalt. Eine Decke würde helfen.'],
+    ['Kalt hier. Ohne Decke zitterst du wie ’n nasser Pudel.'],
+    ['Saukalt. Ohne Decke frierst du dir noch das letzte Hirn ab.']
   ]
 };
 
 // ================= ZUSTAND =================
 const SAVE_KEY = 'platteMachen_v1';
-let S = { money:0, stage:0, cup:0, level:2, prom:0, passanten:0, coins:0, bag:[], bagCap:20, bonus:0, ruf:0, used:{}, finds:0, xp:0, lv:1, dex:{}, tasks:null, taskDay:'', streak:0, lastDoneDay:'', dog:null };
+let S = { money:0, stage:0, cup:0, level:2, prom:0, passanten:0, coins:0, bag:[], bagCap:20, bonus:0, ruf:0, used:{}, finds:0, xp:0, lv:1, dex:{}, tasks:null, taskDay:'', streak:0, lastDoneDay:'', dog:null, skills:{}, learning:null, eggs:[], boosts:{}, km:0 };
 try { const raw = localStorage.getItem(SAVE_KEY); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch(e) {}
 if (!Array.isArray(S.bag)) S.bag = [];
+if (!S.skills) S.skills = {}; if (!S.eggs) S.eggs = []; if (!S.boosts) S.boosts = {}; if (!S.km) S.km = 0;
 if (!S.dex) S.dex = {}; if (!S.lv) S.lv = 1; if (!S.xp) S.xp = 0;
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch(e) {} }
 
@@ -736,7 +813,8 @@ function handleDetections(people) {
   drawOverlay();
   if (!packed && Date.now() - lastCoinTime > 45000 && Date.now() - lastTalk > 40000) say('empty');
 }
-function promBonus() { if (S.prom >= 0.5 && S.prom <= 1.5) return 1.2; if (S.prom > 2.5) return 0.7; return 1.0; }
+function tough() { return 0.3 * (S.skills.trink || 0); }
+function promBonus() { if (S.prom >= 0.5 && S.prom <= 1.5 + tough()) return 1.2; if (S.prom > 2.5 + tough()) return 0.7; return 1.0; }
 function rollCoin() {
   const total = COINS.reduce((s, c) => s + c[1], 0); let r = Math.random() * total;
   for (const [v, w] of COINS) { if ((r -= w) < 0) return v; } return 0.01;
@@ -751,9 +829,9 @@ function onPassant(t) {
   if (S.cup >= st.cap) { say('full'); updateUI(); return; }
   S.dry = (S.dry || 0) + 1;
   const pity = S.dry >= PITY;
-  if (pity || Math.random() < (st.chance + S.bonus) * promBonus() * placeMult() * timeMult() * dogMult()) {
+  if (pity || Math.random() < (st.chance + S.bonus) * promBonus() * placeMult() * timeMult() * dogMult() * (1 + 0.04 * (S.skills.mitleid || 0)) * wxBeg() * (boostOn('mitleid') ? 1.5 : 1)) {
     S.dry = 0;
-    let val = r2(rollCoin() * st.mult);
+    let val = r2(rollCoin() * st.mult * (1 + 0.05 * (S.skills.rhetorik || 0)));
     if (st.lose && !pity && Math.random() < st.lose) { popAt(t.bbox, '-' + money(val) + ' rausgefallen', true); say('lost'); updateUI(); save(); return; }
     val = Math.min(val, r2(st.cap - S.cup));
     S.cup = r2(S.cup + val); S.coins++; lastCoinTime = now; track('coin', 1); track('earn', val); addXp(2);
@@ -827,7 +905,7 @@ function collect(el, id, state) {
   if (S.bag.length >= S.bagCap) { say('bagfull', true); toast('Tüte voll! Erst verkaufen.'); return; }
   const it = ITEMS[id];
   // Besoffen einsammeln: kann kaputt gehen
-  if (state === 'ok' && S.prom >= 2.5 && Math.random() < 0.25) {
+  if (state === 'ok' && S.prom >= 2.5 + tough() && Math.random() < 0.25) {
     if (it.crush) { id = it.crush; state = 'crushed'; } else if (it.glass) { id = 'scherben'; state = 'broken'; }
   }
   clearTimeout(el._timer); el.remove();
@@ -846,7 +924,7 @@ setInterval(() => {
   if (!running || mode !== 'suchen') return;
   setStatus();
   const mv = moving(); const f = nearFundort();
-  if (Math.random() < (mv ? 0.28 : 0.05) * (f ? 2 : 1)) spawnFind();
+  if (Math.random() < (mv ? 0.28 : 0.05) * (f ? 2 : 1) * (1 + 0.08 * (S.skills.auge || 0)) * wxFind() * (boostOn('magnet') ? 2 : 1)) spawnFind();
   if (!mv && Date.now() - lastMoveTime > 20000 && Date.now() - lastStillNag > 45000) { lastStillNag = Date.now(); say('still'); }
 }, 3000);
 
@@ -886,6 +964,7 @@ function startGeo() {
   geoWatch = navigator.geolocation.watchPosition(onGeo, onGeoErr, { enableHighAccuracy:true, maximumAge:5000, timeout:30000 });
 }
 function onGeo(pos) {
+  setTimeout(fetchWx, 500);
   geo = { lat:pos.coords.latitude, lon:pos.coords.longitude, acc:pos.coords.accuracy }; geoError = '';
   if (!lastFetch || distM(lastFetch, geo) > 300) fetchPois();
   if (meMarker) meMarker.setLatLng([geo.lat, geo.lon]);
@@ -1045,6 +1124,15 @@ function useItem(id) {
     S.bag.splice(idx, 1);
     const r = Math.random(); const win = r < 0.55 ? 0 : r < 0.80 ? 1 : r < 0.92 ? 2 : r < 0.98 ? 5 : r < 0.995 ? 20 : 100;
     S.money = r2(S.money + win); toast(win ? 'Gewonnen: ' + euro(win) : 'Niete!'); say(win >= 5 ? 'rubbelwin' : win ? 'rubbelsmall' : 'rubbellose', true);
+  } else if (it.cat === 'egg') {
+    if (S.eggs.length >= 3) { toast('Du schleppst schon 3 Tüten mit.'); return; }
+    S.bag.splice(idx, 1); S.eggs.push({ id, km:it.km, done:0 }); toast(it.name + ' wird mitgeschleppt. Lauf los!'); say('eggfound', true);
+  } else if (it.cat === 'boost') {
+    S.bag.splice(idx, 1); const until = Math.max(Date.now(), S.boosts[it.boost] || 0) + 30 * 60000; S.boosts[it.boost] = until;
+    toast(it.name.replace(' (30 Min.)', '') + ' aktiv bis ' + new Date(until).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' })); say('boost', true);
+  } else if (it.use === 'cold') {
+    if (S.used.decke) { toast('Deine Decke hast du schon dabei.'); return; }
+    S.bag.splice(idx, 1); S.used.decke = true; toast('Decke eingepackt: Bei Kälte bekommst du jetzt mehr Mitleid.'); say('useitem', true);
   } else if (it.fund) {
     track('fundbuero', 1); addXp(50);
     S.bag.splice(idx, 1); S.ruf += 10; const lohn = id === 'ring' ? 5 : 3; S.money = r2(S.money + lohn);
@@ -1052,7 +1140,7 @@ function useItem(id) {
   }
   renderBag(); updateUI(); save();
 }
-const CAT_LABEL = { hund:'Für den Hund', pfand:'Pfand', schrott:'Kaputt', trinken:'Getränke', essen:'Essen', krims:'Krimskrams', nuetz:'Nützliches', rar:'Raritäten' };
+const CAT_LABEL = { egg:'Überraschungstüten', boost:'Lockmittel', hund:'Für den Hund', pfand:'Pfand', schrott:'Kaputt', trinken:'Getränke', essen:'Essen', krims:'Krimskrams', nuetz:'Nützliches', rar:'Raritäten' };
 function renderBag() {
   $('bagInfo').innerHTML = 'Plätze: <b>' + S.bag.length + ' / ' + S.bagCap + '</b> · Ruf: <b>' + S.ruf + '</b> · Einwurf-Bonus: <b>+' + Math.round(S.bonus * 100) + ' %</b>';
   $('vPfand').textContent = euro(sellValue(isPfand));
@@ -1075,12 +1163,15 @@ function renderBag() {
       if (it.use === 'bag5') info = 'Tüte +5 Plätze'; if (it.use === 'bag20') info = 'Tüte +20 Plätze';
       if (it.use === 'rubbel') info = 'Rubbeln: 0–100 €';
       if (it.fund) info = (it.v ? 'Pfandleiher ' + euro(it.v) + ' oder ' : '') + 'Fundbüro: Ruf + Finderlohn';
+      if (it.cat === 'egg') info = 'Öffnet sich nach ' + it.km + ' km Laufen';
+      if (it.cat === 'boost') info = it.boost === 'mitleid' ? '30 Min. +50 % Einwürfe' : '30 Min. doppelte Fundchance';
+      if (it.use === 'cold') info = (S.used.decke ? 'Hast du schon · ' : '') + 'Bonus bei Kälte · oder 1 € beim Schrotthändler';
       if (it.quest) info = 'Wofür der wohl ist …? (Quest folgt)';
       if (id === 'scherben') info = 'wertlos, wird beim Schrotthändler entsorgt';
       if (it.cat === 'schrott' && id !== 'scherben') info = 'Automat nimmt das nicht · Schrott 1 ct';
       row.querySelector('span').textContent = info;
       let act = null;
-      if (it.cat === 'hund') act = 'Füttern'; else if (it.cat === 'trinken') act = 'Trinken'; else if (it.cat === 'essen') act = 'Essen';
+      if (it.cat === 'egg') act = 'Mitnehmen'; else if (it.cat === 'boost') act = 'Aktivieren'; else if (it.cat === 'hund') act = 'Füttern'; else if (it.cat === 'trinken') act = 'Trinken'; else if (it.cat === 'essen') act = 'Essen';
       else if (it.use === 'rubbel') act = 'Rubbeln'; else if (it.use) act = 'Benutzen'; else if (it.fund) act = 'Fundbüro';
       if (act) { const b = document.createElement('button'); b.textContent = act; b.onclick = () => useItem(id); row.appendChild(b); }
       list.appendChild(row);
@@ -1103,13 +1194,13 @@ function renderShop() {
     else { btn.textContent = euro(st.price); btn.disabled = i !== S.stage + 1; btn.onclick = () => buyStage(i); }
     $('shopList').appendChild(row);
   });
-  const kiosk = [['hundefutter', 1.00], ['dosenbier', 0.80], ['bier_voll', 1.00], ['wein', 2.00], ['kaffee', 1.50], ['doener', 5.00], ['tuete', 0.20]];
+  const kiosk = [['lock_mitleid', 3.00], ['lock_magnet', 3.00], ['hundefutter', 1.00], ['dosenbier', 0.80], ['bier_voll', 1.00], ['wein', 2.00], ['kaffee', 1.50], ['doener', 5.00], ['tuete', 0.20]];
   $('kioskList').innerHTML = '';
   kiosk.forEach(([id, price]) => {
     const it = ITEMS[id]; const row = document.createElement('div'); row.className = 'item'; row.style.marginTop = '8px';
     row.innerHTML = '<img alt=""><div class="t"><b></b><span></span></div><button></button>';
     row.querySelector('img').src = I(id); row.querySelector('b').textContent = it.name;
-    row.querySelector('span').textContent = it.feed ? 'Macht deinen Hund satt (+' + it.feed + ')' : it.prom ? (it.prom > 0 ? '+' : '') + it.prom.toFixed(1).replace('.', ',') + ' ‰ · kommt in die Tüte' : 'Tüte +5 Plätze';
+    row.querySelector('span').textContent = it.boost ? (it.boost === 'mitleid' ? '30 Min. +50 % Einwürfe' : '30 Min. doppelte Fundchance') : it.feed ? 'Macht deinen Hund satt (+' + it.feed + ')' : it.prom ? (it.prom > 0 ? '+' : '') + it.prom.toFixed(1).replace('.', ',') + ' ‰ · kommt in die Tüte' : 'Tüte +5 Plätze';
     const btn = row.querySelector('button'); btn.textContent = euro(price);
     btn.onclick = () => {
       if (S.money < price) { say('poor', true); toast('Zu wenig Geld'); return; }
@@ -1255,6 +1346,9 @@ function renderDex() {
 const DOG_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#DAD8D3"/><path d="M14 18c-4 2-6 10-3 16l6-4z" fill="#6B4A2B"/><path d="M50 18c4 2 6 10 3 16l-6-4z" fill="#6B4A2B"/><ellipse cx="32" cy="34" rx="17" ry="16" fill="#B07A45"/><ellipse cx="32" cy="42" rx="9" ry="7" fill="#E7C9A0"/><circle cx="25" cy="30" r="2.6" fill="#1C1A17"/><circle cx="39" cy="30" r="2.6" fill="#1C1A17"/><ellipse cx="32" cy="38" rx="3.6" ry="2.6" fill="#1C1A17"/><path d="M28 44q4 3 8 0" stroke="#1C1A17" stroke-width="1.6" fill="none"/></svg>');
 const FOOD_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#DAD8D3"/><ellipse cx="32" cy="40" rx="22" ry="9" fill="#C0392B"/><path d="M10 40q22 16 44 0v4q-22 16-44 0z" fill="#8E2A20"/><circle cx="24" cy="36" r="4" fill="#7A4E2A"/><circle cx="33" cy="34" r="4" fill="#8B5A2B"/><circle cx="41" cy="37" r="4" fill="#7A4E2A"/></svg>');
 IMGS.hundefutter = IMGS.hundefutter || FOOD_SVG;
+IMGS.egg2 = IMGS.egg5 = IMGS.egg10 = IMGS.tuete;
+IMGS.lock_mitleid = IMGS.schild;
+IMGS.lock_magnet = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#DAD8D3"/><path d="M18 14v20a14 14 0 0 0 28 0V14h-9v20a5 5 0 0 1-10 0V14z" fill="#C0392B"/><rect x="18" y="14" width="9" height="7" fill="#B8BCC2"/><rect x="37" y="14" width="9" height="7" fill="#B8BCC2"/><path d="M10 50l6-4M54 50l-6-4M32 58v-6" stroke="#E8A33D" stroke-width="3" stroke-linecap="round"/></svg>');
 const dogPic = () => IMGS.hund || DOG_SVG;
 function dogTick() {
   if (!S.dog) return;
@@ -1276,19 +1370,39 @@ function adoptDog() {
 function feedDog(v) {
   dogTick(); S.dog.hunger = Math.min(100, S.dog.hunger + v); track('feed', 1); addXp(10); say('dogfed', true); toast(S.dog.name + ' ist satt (' + Math.round(S.dog.hunger) + ' %)');
 }
-let lastDogPos = null, dogHungryNag = 0;
-function dogWalk() {
-  if (!S.dog || !geo || geo.acc > 30) return;
-  if (lastDogPos) {
-    const d = distM(lastDogPos, geo);
-    if (d < 3) return; if (d > 150) { lastDogPos = { lat:geo.lat, lon:geo.lon }; return; }
-    const before = dogLevel(); S.dog.km = Math.round((S.dog.km + d / 1000) * 1000) / 1000;
-    if (dogLevel() > before) { toast(S.dog.name + ' ist jetzt Level ' + dogLevel() + '!'); say('doglevel', true); }
+let lastWalkPos = null, dogHungryNag = 0, lastGpsWalk = 0;
+function addKm(km) {
+  if (km <= 0) return;
+  S.km = Math.round((S.km + km) * 1000) / 1000;
+  if (S.dog) { const before = dogLevel(); S.dog.km = Math.round((S.dog.km + km) * 1000) / 1000; if (dogLevel() > before) { toast(S.dog.name + ' ist jetzt Level ' + dogLevel() + '!'); say('doglevel', true); } }
+  S.eggs.forEach((e) => { e.done = Math.round((e.done + km) * 1000) / 1000; });
+  const ready = S.eggs.filter(e => e.done >= e.km); if (ready.length) { S.eggs = S.eggs.filter(e => e.done < e.km); ready.forEach(openEgg); }
+}
+function dogWalk() {  // GPS-Strecke
+  if (!geo || geo.acc > 30) return;
+  if (lastWalkPos) {
+    const d = distM(lastWalkPos, geo);
+    if (d < 3) return; if (d > 150) { lastWalkPos = { lat:geo.lat, lon:geo.lon }; return; }
+    addKm(d / 1000); lastGpsWalk = Date.now();
   }
-  lastDogPos = { lat:geo.lat, lon:geo.lon };
+  lastWalkPos = { lat:geo.lat, lon:geo.lon };
+}
+// Ohne gutes GPS: Strecke grob aus dem Bewegungssensor schätzen (ca. 4 km/h beim Gehen)
+setInterval(() => { if (running && moving() && Date.now() - lastGpsWalk > 60000) { addKm(4 / 3600 * 5); } }, 5000);
+function openEgg(e) {
+  const pool = (r) => SPAWNABLE.filter(k => ITEMS[k].r === r && ITEMS[k].cat !== 'egg');
+  const pickR = (r) => { const p = pool(r); return p[Math.floor(Math.random() * p.length)]; };
+  let items = [], money = 0;
+  if (e.km === 2) { items = [pickR('s'), pickR('s'), pickR('g')]; money = 1; }
+  else if (e.km === 5) { items = [pickR('e'), pickR('s'), 'rubbellos']; money = 3; }
+  else { items = [Math.random() < 0.5 ? pickR('l') : pickR('e'), pickR('e'), pickR('s')]; money = 10; }
+  items.forEach((id) => { S.bag.push(id); if (!S.dex[id]) { S.dex[id] = 0; addXp(50); } S.dex[id]++; });
+  S.money = r2(S.money + money); addXp(e.km * 30);
+  toast('Überraschungstüte (' + e.km + ' km) geöffnet: ' + items.map(i => ITEMS[i].name).join(', ') + ' + ' + euro(money));
+  say('eggopen', true); updateUI(); save();
 }
 setInterval(() => {
-  if (!S.dog) return; dogTick(); dogWalk(); updateUI(); save();
+  dogWalk(); checkSkill(); if (!S.dog) { updateUI(); save(); return; } dogTick(); updateUI(); save();
   if (running && !dogFed() && Date.now() - dogHungryNag > 600000) { dogHungryNag = Date.now(); say('doghungry', true); }
 }, 30000);
 function renderDog() {
@@ -1320,11 +1434,116 @@ function renderMenu() {
   $('xpFill').style.width = Math.min(100, S.xp / xpNeed(S.lv) * 100) + '%';
   $('taskBadge').textContent = S.tasks.filter(t => t.done).length + ' / 3 · Serie ' + S.streak;
   $('dexBadge').textContent = DEX_IDS().filter(id => S.dex[id]).length + ' / ' + DEX_IDS().length;
+  $('skillBadge').textContent = S.learning ? 'lernt … ' + fmtMin(Math.max(1, Math.ceil((S.learning.until - Date.now()) / 60000))) : SKILLS.reduce((s, k) => s + (S.skills[k.id] || 0), 0) + ' / 20 Stufen';
+  $('eggBadge').textContent = S.eggs.length + ' / 3 unterwegs';
+  $('wxBadge').textContent = curWx() ? WX[curWx().k].label + ' ' + curWx().t + ' °C' : '–';
   $('dogBadge').textContent = S.dog ? S.dog.name + ' · ' + Math.round(S.dog.hunger) + ' % satt' : 'ab Level 2';
 }
 $('openTasks').onclick = () => { $('menuSheet').classList.remove('open'); renderTasks(); $('taskSheet').classList.add('open'); };
 $('openDex').onclick = () => { $('menuSheet').classList.remove('open'); renderDex(); $('dexSheet').classList.add('open'); };
 $('openDog').onclick = () => { $('menuSheet').classList.remove('open'); renderDog(); $('dogSheet').classList.add('open'); };
+
+
+// ================= WEITERBILDUNG =================
+const SKILLS = [
+  { id:'mitleid', name:'Mitleidsblick', desc:'+4 % Einwurfchance pro Stufe' },
+  { id:'auge', name:'Flaschenauge', desc:'+8 % Fundchance pro Stufe' },
+  { id:'trink', name:'Trinkfestigkeit', desc:'Promille wirken 0,3 ‰ später pro Stufe' },
+  { id:'rhetorik', name:'Rhetorik', desc:'+5 % größere Münzen pro Stufe' },
+];
+const skillCost = (l) => 2 * l * l;            // 2, 8, 18, 32, 50 €
+const skillMin = (l) => 5 * l * l;             // 5, 20, 45, 80, 125 Minuten
+function fmtMin(m) { return m >= 60 ? Math.floor(m / 60) + ' Std. ' + (m % 60 ? (m % 60) + ' Min.' : '') : m + ' Min.'; }
+function checkSkill() {
+  if (S.learning && Date.now() >= S.learning.until) {
+    const sk = SKILLS.find(s => s.id === S.learning.id); S.skills[sk.id] = (S.skills[sk.id] || 0) + 1; S.learning = null;
+    addXp(80); toast(sk.name + ' Stufe ' + S.skills[sk.id] + ' gelernt!'); say('skilldone', true); save();
+    if ($('skillSheet').classList.contains('open')) renderSkills();
+  }
+}
+function renderSkills() {
+  checkSkill();
+  $('skillInfo').innerHTML = S.learning ? 'Lernt gerade: <b>' + SKILLS.find(s => s.id === S.learning.id).name + '</b> · fertig in <b>' + fmtMin(Math.max(1, Math.ceil((S.learning.until - Date.now()) / 60000))) + '</b>' : 'Gerade lernst du nichts.';
+  const list = $('skillList'); list.innerHTML = '';
+  SKILLS.forEach((sk) => {
+    const l = S.skills[sk.id] || 0, next = l + 1;
+    const d = document.createElement('div'); d.className = 'task';
+    d.innerHTML = '<div class="row"><b></b><span></span></div><div class="note"></div><button class="btn" style="height:44px;font-size:14px"></button>';
+    d.querySelector('b').textContent = sk.name + ' · Stufe ' + l + ' / 5';
+    d.querySelector('.row span').textContent = l ? 'aktiv' : '';
+    d.querySelector('.note').textContent = sk.desc;
+    const b = d.querySelector('button');
+    if (l >= 5) { b.textContent = 'Gemeistert'; b.disabled = true; }
+    else if (S.learning) { b.textContent = S.learning.id === sk.id ? 'Wird gelernt …' : 'Erst andere Weiterbildung fertig machen'; b.disabled = true; b.style.background = '#3B3A36'; b.style.color = '#B5AFA4'; }
+    else { b.textContent = 'Stufe ' + next + ' lernen · ' + euro(skillCost(next)) + ' · ' + fmtMin(skillMin(next)); b.onclick = () => {
+      if (S.money < skillCost(next)) { say('poor', true); toast('Zu wenig Geld'); return; }
+      S.money = r2(S.money - skillCost(next)); S.learning = { id:sk.id, until:Date.now() + skillMin(next) * 60000 }; save(); updateUI(); renderSkills(); say('skillstart', true);
+    }; }
+    list.appendChild(d);
+  });
+}
+$('openSkills').onclick = () => { $('menuSheet').classList.remove('open'); renderSkills(); $('skillSheet').classList.add('open'); };
+
+// ================= ÜBERRASCHUNGSTÜTEN =================
+function renderEggs() {
+  $('eggInfo').innerHTML = 'Insgesamt gelaufen: <b>' + S.km.toFixed(2).replace('.', ',') + ' km</b>';
+  const list = $('eggList'); list.innerHTML = '';
+  if (!S.eggs.length) { list.innerHTML = '<p class="note">Du schleppst gerade keine Überraschungstüte mit. Liegt eine in deiner Tüte? Dort auf „Mitnehmen“ tippen.</p>'; return; }
+  S.eggs.forEach((e) => {
+    const d = document.createElement('div'); d.className = 'task';
+    d.innerHTML = '<div class="row"><b></b><span></span></div><div class="xpbar"><div></div></div>';
+    d.querySelector('b').textContent = 'Überraschungstüte · ' + e.km + ' km';
+    d.querySelector('.row span').textContent = Math.min(e.done, e.km).toFixed(2).replace('.', ',') + ' / ' + e.km + ' km';
+    d.querySelector('.xpbar div').style.width = Math.min(100, e.done / e.km * 100) + '%';
+    list.appendChild(d);
+  });
+}
+$('openEggs').onclick = () => { $('menuSheet').classList.remove('open'); renderEggs(); $('eggSheet').classList.add('open'); };
+
+// ================= LOCKMITTEL =================
+function boostOn(k) { return (S.boosts[k] || 0) > Date.now(); }
+function boostMin(k) { return Math.max(0, Math.ceil(((S.boosts[k] || 0) - Date.now()) / 60000)); }
+
+// ================= WETTER (Open-Meteo) =================
+let wx = null, wxFetched = 0, wxForce = null;
+async function fetchWx() {
+  if (!geo || Date.now() - wxFetched < 20 * 60000) return;
+  wxFetched = Date.now();
+  try {
+    const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + geo.lat.toFixed(2) + '&longitude=' + geo.lon.toFixed(2) + '&current=temperature_2m,precipitation,weather_code,is_day';
+    const r = await fetch(u); if (!r.ok) return; const d = await r.json(); const c = d.current || {};
+    const code = c.weather_code, t = c.temperature_2m;
+    let k = 'wolken';
+    if (code >= 95) k = 'gewitter'; else if ((code >= 71 && code <= 77) || code === 85 || code === 86) k = 'schnee';
+    else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || c.precipitation > 0.1) k = 'regen';
+    else if (code <= 1 && c.is_day) k = 'sonne';
+    const old = wx && wx.k; wx = { k, t:Math.round(t) };
+    if (old !== k) setTimeout(() => sayWx(), 2000);
+    updateUI();
+  } catch (e) {}
+}
+function curWx() { return wxForce || wx; }
+const WX = {
+  sonne:   { label:'Sonne', beg:1.0, find:1.2, txt:'Mehr Leute draußen, mehr leere Flaschen' },
+  wolken:  { label:'Bewölkt', beg:1.0, find:1.0, txt:'Normales Wetter' },
+  regen:   { label:'Regen', beg:1.15, find:0.8, txt:'Mehr Mitleid, aber weniger Funde' },
+  schnee:  { label:'Schnee', beg:1.2, find:0.7, txt:'Viel Mitleid, kaum Funde' },
+  gewitter:{ label:'Gewitter', beg:1.1, find:0.5, txt:'Alle rennen – kaum Funde' },
+};
+function isCold() { const w = curWx(); return !!w && w.t < 5; }
+function wxBeg() { const w = curWx(); if (!w) return 1; let m = WX[w.k].beg; if (isCold()) m *= S.used.decke ? 1.15 : 0.9; return m; }
+function wxFind() { const w = curWx(); return w ? WX[w.k].find : 1; }
+function sayWx() { const w = curWx(); if (!w) return; if (w.k === 'wolken' && !(isCold() && !S.used.decke)) return; say(isCold() && !S.used.decke ? 'wetter_kalt' : ('wetter_' + (w.k === 'gewitter' ? 'regen' : w.k === 'wolken' ? 'sonne' : w.k)), true); }
+setInterval(() => { if (running) fetchWx(); }, 60000);
+function renderWx() {
+  const w = curWx();
+  if (!w) { $('wxInfo').innerHTML = geo ? 'Wetter wird geladen …' : 'Für das Wetter braucht das Spiel deinen Standort.'; return; }
+  const W = WX[w.k];
+  $('wxInfo').innerHTML = '<b>' + W.label + ', ' + w.t + ' °C</b><br>' + W.txt +
+    '<br>Betteln: <b>×' + wxBeg().toFixed(2).replace('.', ',') + '</b> · Funde: <b>×' + wxFind().toFixed(2).replace('.', ',') + '</b>' +
+    (isCold() ? '<br>Es ist kalt! ' + (S.used.decke ? 'Deine Decke bringt Mitleid-Bonus.' : 'Ohne Decke zitterst du und bekommst weniger. Decke in der Tüte „benutzen“.') : '');
+}
+$('openWx').onclick = () => { $('menuSheet').classList.remove('open'); renderWx(); $('wxSheet').classList.add('open'); };
 
 // ================= CHEAT-MENÜ (Tester) =================
 let infoTaps = [];
@@ -1375,6 +1594,12 @@ document.querySelectorAll('[data-cheat]').forEach((b) => b.addEventListener('cli
   else if (c === 'additem') { if (S.bag.length >= S.bagCap) S.bagCap++; S.bag.push($('cheatItem').value); cheatDone(ITEMS[$('cheatItem').value].name + ' in der Tüte'); }
   else if (c === 'say') { $('cheatSheet').classList.remove('open'); say($('cheatLine').value, true); }
   else if (c === 'lvl1' || c === 'lvl2' || c === 'lvl3') { S.level = +c.slice(3); cheatDone('Härtestufe ' + S.level); }
+  else if (c === 'learnfast') { if (S.learning) { S.learning.until = Date.now(); checkSkill(); cheatDone('Weiterbildung fertig'); } else cheatDone('Lernt gerade nichts'); }
+  else if (c === 'km5') { addKm(5); cheatDone('+5 km gelaufen'); }
+  else if (c === 'eggs') { S.bag.push('egg2', 'egg5', 'egg10'); cheatDone('3 Überraschungstüten in der Tüte'); }
+  else if (c === 'wx') { const ks = Object.keys(WX); const cur = curWx() ? ks.indexOf(curWx().k) : -1; wxForce = { k:ks[(cur + 1) % ks.length], t:(curWx() && curWx().t) || 12 }; sayWx(); cheatDone('Wetter: ' + WX[wxForce.k].label); }
+  else if (c === 'cold') { const w = curWx() || { k:'wolken', t:12 }; wxForce = { k:w.k, t:w.t < 5 ? 12 : 1 }; cheatDone('Temperatur ' + wxForce.t + ' °C'); }
+  else if (c === 'boosts') { S.boosts.mitleid = Date.now() + 30 * 60000; S.boosts.magnet = Date.now() + 30 * 60000; cheatDone('Lockmittel 30 Min. aktiv'); }
   else if (c === 'xp') { addXp(200); cheatDone('+200 XP'); }
   else if (c === 'dog') { $('cheatSheet').classList.remove('open'); if (S.dog) toast('Hast schon ' + S.dog.name); else adoptDog(); }
   else if (c === 'dogkm') { if (S.dog) { S.dog.km += 2; cheatDone(S.dog.name + ' Level ' + dogLevel()); } }
@@ -1392,6 +1617,11 @@ setInterval(() => { if (S.prom > 0) { S.prom = Math.max(0, Math.round((S.prom - 
 function updateUI() {
   const st = STAGES[S.stage];
   $('lvlBadge').textContent = 'Lv ' + S.lv;
+  const w = curWx(), bt = [];
+  if (w) bt.push(WX[w.k].label + ' ' + w.t + '°');
+  if (boostOn('mitleid')) bt.push('Schild ' + boostMin('mitleid') + "'");
+  if (boostOn('magnet')) bt.push('Magnet ' + boostMin('magnet') + "'");
+  $('wxChip').style.display = bt.length ? 'flex' : 'none'; $('wxText').textContent = bt.join(' · ');
   const di = $('dogIcon');
   if (S.dog && mode === 'betteln') { di.style.display = 'flex'; $('dogImg').src = dogPic(); di.classList.toggle('hungry', !dogFed()); } else di.style.display = 'none';
   $('money').textContent = euro(S.money);
